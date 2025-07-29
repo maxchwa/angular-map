@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { UserService } from './services/user.service';
 import { RouterOutlet } from '@angular/router';
 import { MapComponent } from './map/map.component';
+import { CreateMemoryComponent } from './create-memory/create-memory.component';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',

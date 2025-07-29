@@ -1,0 +1,13 @@
+<form [formGroup]="memoryForm" (ngSubmit)="submitMemory()" enctype="multipart/form-data" class="flex flex-col gap-4 max-w-md mx-auto mt-6">
+  
+  <input type="text" formControlName="title" placeholder="Memory title" class="border p-2 rounded" />
+
+  <textarea formControlName="description" placeholder="Description" class="border p-2 rounded"></textarea>
+
+  <input type="file" (change)="onFileSelected($event)" class="border p-2 rounded" />
+
+  <button type="submit" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
+    Submit Memory
+  </button>
+
+</form>
