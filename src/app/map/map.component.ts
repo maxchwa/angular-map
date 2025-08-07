@@ -1,7 +1,9 @@
+import { fromLonLat } from 'ol/proj';
 import { Component, AfterViewInit } from '@angular/core';
 import Map from 'ol/Map';
 import View from 'ol/View';
 import TileLayer from 'ol/layer/Tile';
+import Control from 'ol/control/Control.js';
 import OSM from 'ol/source/OSM';
 import { toLonLat } from 'ol/proj';
 import DragRotateAndZoom from 'ol/interaction/DragRotateAndZoom';
@@ -17,6 +19,9 @@ import Geolocation from 'ol/Geolocation';
 import { CreateMemoryComponent } from '../create-memory/create-memory.component';
 import { CommonModule } from '@angular/common';
 import Overlay from 'ol/Overlay';
+import { GoToMyLocationControl } from '../go-to-my-location/go-to-my-location.component';
+import { MemoryService, Memory } from '../memory-service/memory-service.component';
+import { ViewChild, ElementRef } from '@angular/core';
 
 @Component({
   selector: 'app-map',
@@ -25,6 +30,9 @@ import Overlay from 'ol/Overlay';
   template: `
     <div class="relative">
       <div id="map" class="map"></div>
+      <div id="desc" #popupContent class="ol-popup z-305">
+  <!-- content will be injected here -->
+    </div>
 
       <!-- Popup1: shows after map click, has Create Memory button -->
       <div id="popup" class="ol-popup">
@@ -37,6 +45,7 @@ import Overlay from 'ol/Overlay';
         <div id="popup-content">
           <button
             (click)="openCreateMemoryForm()"
+            (click)="hidePopup1($event)"
             class="absolute top-14 left-2 z-300 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
           >
             Create Memory
@@ -59,22 +68,10 @@ import Overlay from 'ol/Overlay';
             [lonLat]="lastClickedLonLat!"
             (closed)="onMemoryFormClosed()"
           ></app-create-memory>
-          <button
-            (click)="openCreateMemoryForm()"
-            class="absolute top-14 left-2 z-305 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
-          >
-            Fun Button
-          </button>
         </div>
       </div>
 
       <!-- Location button -->
-      <button
-        (click)="goToMyLocation()"
-        class="absolute z-300 top-2 left-2 bg-blue-600 text-white px-4 py-2 rounded shadow"
-      >
-        Go to My Location
-      </button>
     </div>
   `,
   styles: [`
@@ -84,12 +81,24 @@ import Overlay from 'ol/Overlay';
       position: relative;
       z-index: 0;
     }
+    .ol-popup {
+      background-color: white;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      min-width: 150px;
+      position: absolute;
+      bottom: 12px;
+      left: -50px;
+    }
   `]
 })
 export class MapComponent implements AfterViewInit {
+  @ViewChild('popupContent', { static: false }) popupContent!: ElementRef;
   map!: Map;
   overlay!: Overlay;   // popup1
   overlay2!: Overlay;  // popup2
+  overlay3!: Overlay;
 
   noDrag: boolean = true;
   selectInteraction!: Select;
@@ -97,6 +106,9 @@ export class MapComponent implements AfterViewInit {
   showMemoryForm = false;
   lastClickedCoord: any = null;
   lastClickedLonLat: [number, number] | null = null;
+
+  memories: Memory[] = [];
+  constructor(private memoryService: MemoryService) {}
 
   vectorSource = new VectorSource();
   vectorLayer = new VectorLayer({
@@ -129,6 +141,7 @@ export class MapComponent implements AfterViewInit {
   ngAfterViewInit(): void {
     const container = document.getElementById('popup')!;
     const container2 = document.getElementById('popup2')!;
+    const container3 = document.getElementById('desc')!;
 
     this.overlay = new Overlay({
       element: container,
@@ -141,6 +154,15 @@ export class MapComponent implements AfterViewInit {
 
     this.overlay2 = new Overlay({
       element: container2,
+      autoPan: {
+        animation: {
+          duration: 250,
+        },
+      },
+    });
+
+    this.overlay3 = new Overlay({
+      element: container3,
       autoPan: {
         animation: {
           duration: 250,
@@ -161,11 +183,48 @@ export class MapComponent implements AfterViewInit {
         center: [500000, 6000000],
         zoom: 7,
       }),
-      overlays: [this.overlay, this.overlay2],
+      overlays: [this.overlay, this.overlay2, this.overlay3],
     });
 
+    this.memoryService.getMemories().subscribe((data) => {
+  this.memories = data;
+
+  for (const item of this.memories) {
+    const coordString = item.coords;
+
+    // Convert string to coordinate array if needed
+    const [lon, lat] = coordString.split(',').map(Number); // assuming "103.851,1.290"
+    const coord = [lon, lat];
+
+    // Create a new popup/feature/overlay here
+    console.log('Add popup at:', coord);
+    console.log('lon:', lon, 'lat:', lat);
+    
+    // e.g., create feature or set overlay
+    const feature = new Feature({
+      geometry: new Point(coord),
+      memoryData: item
+    });
+
+    feature.setStyle(this.defaultStyle);
+    this.vectorSource.addFeature(feature);
+
+    // Optional: set overlay position (e.g., to show a popup with memory data)
+    // const overlay = new Overlay({ ... });
+    // overlay.setPosition(coord);
+    // this.map.addOverlay(overlay);
+  }
+
+  console.log('Total features:', this.vectorSource.getFeatures().length);
+  
+  });
+
     // Map click: create feature, show popup1 with Create Memory button
+
     this.map.on('click', (event) => {
+
+      this.onMemoryFormClosed();
+      
       if (!this.noDrag) return;
 
       const featureAtPixel = this.map.forEachFeatureAtPixel(event.pixel, (feature) => feature);
@@ -204,11 +263,32 @@ export class MapComponent implements AfterViewInit {
         feature.setStyle(this.selectedStyle);
         const coords = (feature.getGeometry() as Point).getCoordinates();
         const lonLat = toLonLat(coords);
-        alert(`Selected point\nLongitude: ${lonLat[0]}, Latitude: ${lonLat[1]}`);
+        const memory = feature.get('memoryData');
+
+
+const contentHtml = `
+      <h3>${memory.title}</h3>
+      <p>${memory.description}</p>
+      <img src="${memory.image}" width="200" />
+    `;
+
+this.popupContent.nativeElement.innerHTML = contentHtml;
+this.overlay3.setPosition(coords);
       }
+      
     });
 
     this.map.addInteraction(this.selectInteraction);
+
+    const goControl = new GoToMyLocationControl({
+    map: this.map,
+      vectorSource: this.vectorSource,
+      defaultStyle: this.defaultStyle,
+      selectInteraction: this.selectInteraction,
+    });
+
+// add to map
+    this.map.addControl(goControl);
   }
 
   openCreateMemoryForm() {
@@ -263,8 +343,6 @@ export class MapComponent implements AfterViewInit {
         this.selectInteraction.getFeatures().push(feature);
 
         const [lon, lat] = toLonLat(position);
-        alert(`You are here:\nLongitude: ${lon}, Latitude: ${lat}`);
-
         geolocation.un('change', onLocationChange);
         geolocation.setTracking(false);
       }

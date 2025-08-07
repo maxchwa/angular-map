@@ -86,6 +86,7 @@ export class CreateMemoryComponent {
     const formData = new FormData();
     formData.append('title', this.memoryForm.get('title')?.value);
     formData.append('description', this.memoryForm.get('description')?.value);
+    formData.append('coords', this.coordinate);
 
     if (this.selectedFile) {
       formData.append('image', this.selectedFile);

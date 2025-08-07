@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { GeolocationComponent } from './geolocation-component.component';
+import { MemoryService } from './memory-service.component';
 
-describe('GeolocationComponentComponent', () => {
-  let component: GeolocationComponent;
-  let fixture: ComponentFixture<GeolocationComponent>;
+describe('MemoryServiceComponent', () => {
+  let component: MemoryService;
+  let fixture: ComponentFixture<MemoryService>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [GeolocationComponent]
+      imports: [MemoryService]
     })
     .compileComponents();
     
-    fixture = TestBed.createComponent(GeolocationComponent);
+    fixture = TestBed.createComponent(MemoryService);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
