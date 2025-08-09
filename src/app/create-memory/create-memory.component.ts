@@ -96,7 +96,7 @@ export class CreateMemoryComponent {
       responseType: 'text',
     }).subscribe({
       next: (res: any) => {
-        alert(`Memory saved!`);
+        alert(`Memory saved! Reload page to see memory.`);
       },
       error: (err) => alert('Error uploading memory: ' + err.message),
     });

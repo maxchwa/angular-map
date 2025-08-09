@@ -99,6 +99,7 @@ export class MapComponent implements AfterViewInit {
   overlay!: Overlay;   // popup1
   overlay2!: Overlay;  // popup2
   overlay3!: Overlay;
+  tempFeature: Feature | null = null;
 
   noDrag: boolean = true;
   selectInteraction!: Select;
@@ -236,11 +237,21 @@ export class MapComponent implements AfterViewInit {
         return;
       }
 
-      const feature = new Feature({
-        geometry: new Point(coord)
-      });
-      feature.setStyle(this.defaultStyle);
-      this.vectorSource.addFeature(feature);
+      
+      // Remove previous temp feature, if any
+if (this.tempFeature) {
+  this.vectorSource.removeFeature(this.tempFeature);
+  this.tempFeature = null;
+}
+
+const feature = new Feature({
+  geometry: new Point(coord)
+});
+feature.setStyle(this.defaultStyle);
+this.vectorSource.addFeature(feature);
+
+// Store this as the temporary one
+this.tempFeature = feature;
 
       this.lastClickedCoord = coord;
       console.log(this.lastClickedCoord);
@@ -257,6 +268,9 @@ export class MapComponent implements AfterViewInit {
     });
 
     this.selectInteraction.on('select', (e) => {
+
+      this.onMemoryFormClosed();
+      
       e.deselected.forEach((f) => f.setStyle(this.defaultStyle));
       if (e.selected.length > 0) {
         const feature = e.selected[0];
@@ -303,8 +317,44 @@ this.overlay3.setPosition(coords);
   }
 
   onMemoryFormClosed(event?: Event) {
+
+    if (this.tempFeature) {
+    this.vectorSource.removeFeature(this.tempFeature);
+    this.tempFeature = null;
+  }
+
+  this.showMemoryForm = false;
+  this.hideOverlay2(event as MouseEvent | undefined);
+  this.hideOverlay3(event as MouseEvent | undefined);
+
+    for (const item of this.memories) {
+    const coordString = item.coords;
+
+    // Convert string to coordinate array if needed
+    const [lon, lat] = coordString.split(',').map(Number); // assuming "103.851,1.290"
+    const coord = [lon, lat];
+
+    // Create a new popup/feature/overlay here
+    console.log('Add popup at:', coord);
+    console.log('lon:', lon, 'lat:', lat);
+    
+    // e.g., create feature or set overlay
+    const feature = new Feature({
+      geometry: new Point(coord),
+      memoryData: item
+    });
+
+    feature.setStyle(this.defaultStyle);
+    this.vectorSource.addFeature(feature);
+
+    // Optional: set overlay position (e.g., to show a popup with memory data)
+    // const overlay = new Overlay({ ... });
+    // overlay.setPosition(coord);
+    // this.map.addOverlay(overlay);
+  }
     this.showMemoryForm = false;
     this.hideOverlay2(event as MouseEvent | undefined);
+    this.hideOverlay3(event as MouseEvent | undefined);
   }
 
   hidePopup1(event?: MouseEvent) {
@@ -316,6 +366,11 @@ this.overlay3.setPosition(coords);
     event?.preventDefault();
     this.overlay2.setPosition(undefined);
     this.showMemoryForm = false;
+  }
+
+  hideOverlay3(event?: MouseEvent) {
+    event?.preventDefault();
+    this.overlay3.setPosition(undefined);
   }
 
   goToMyLocation(): void {
