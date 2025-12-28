@@ -20,6 +20,7 @@ export class GoToMyLocationControl extends Control {
   private button: HTMLButtonElement;
   private statusEl: HTMLSpanElement;
   private options: GoToLocationOptions;
+  private currentLocationFeature: Feature | null = null;
 
   constructor(options: GoToLocationOptions) {
     // create DOM structure
@@ -83,16 +84,14 @@ export class GoToMyLocationControl extends Control {
         });
         feature.setStyle(defaultStyle);
         vectorSource.addFeature(feature);
+        this.currentLocationFeature = feature;
 
         selectInteraction.getFeatures().clear();
         selectInteraction.getFeatures().push(feature);
 
         const [lon, lat] = toLonLat(position);
-        // You can replace alert with something less disruptive if desired
-        alert(`You are here:\nLongitude: ${lon}, Latitude: ${lat}`);
 
         this.statusEl.textContent = '';
-        // cleanup
         this.geolocation?.un('change', onLocationChange);
         this.geolocation?.setTracking(false);
       }
@@ -106,5 +105,14 @@ export class GoToMyLocationControl extends Control {
       alert('Geolocation failed: ' + err.message);
       this.geolocation?.setTracking(false);
     });
+
+    map.on('click', (evt) => {
+
+      if (this.currentLocationFeature) {
+        vectorSource.removeFeature(this.currentLocationFeature);
+        this.currentLocationFeature = null;
+      }
+    });
+
   }
 }
